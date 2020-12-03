@@ -3,10 +3,23 @@
 
 module Z02 where
 
-import Z00(FiveOfZipper(FiveOfZipper), FiveOfDerivative(FiveOfDerivative), UpToFive(One, Two, Three, Four, Five))
-import qualified Z00 as Z00
-import Z01(ListZipper(ListZipper), ListDerivative(ListDerivative))
-import qualified Z01 as Z01
+import           Z00                            ( FiveOfZipper(FiveOfZipper)
+                                                , FiveOfDerivative
+                                                  ( FiveOfDerivative
+                                                  )
+                                                , UpToFive
+                                                  ( One
+                                                  , Two
+                                                  , Three
+                                                  , Four
+                                                  , Five
+                                                  )
+                                                )
+import qualified Z00                           as Z00
+import           Z01                            ( ListZipper(ListZipper)
+                                                , ListDerivative(ListDerivative)
+                                                )
+import qualified Z01                           as Z01
 
 -- | Cojoin is any functor that also supports the `cojoin` operation.
 --
@@ -32,10 +45,8 @@ class Cojoin f => Comonad f where
 -- >>> cojoin [1,2,3]
 -- [[1,2,3],[2,3],[3]]
 instance Cojoin [] where
-  cojoin [] =
-    []
-  cojoin x@(_:t) =
-    x : cojoin t
+  cojoin []        = []
+  cojoin x@(_ : t) = x : cojoin t
 
 -- There is no `Comonad` for `Maybe` but there is `Cojoin`.
 -- i.e. `instance Comonad Maybe` cannot be written, but this can.
@@ -46,26 +57,22 @@ instance Cojoin [] where
 -- >>> cojoin (Just "abc")
 -- Just (Just "abc")
 instance Cojoin Maybe where
-  cojoin Nothing =
-    Nothing
-  cojoin x@(Just _) =
-    Just x
+  cojoin Nothing    = Nothing
+  cojoin x@(Just _) = Just x
 
 -- The `((,) a)` functor can cojoin. i.e. `(a, x) -> (a, (a, x))`
 --
 -- >>> cojoin (99, "abc")
 -- (99,(99,"abc"))
 instance Cojoin ((,) a) where
-  cojoin (a, x) =
-    (a, (a, x))
+  cojoin (a, x) = (a, (a, x))
 
 -- The `((,) a)` cojoin can copure. i.e. `(a, x) -> x`
 --
 -- >>> copure (99, "abc")
 -- "abc"
 instance Comonad ((,) a) where
-  copure (_, x) =
-    x
+  copure (_, x) = x
 
 ----
 
@@ -88,13 +95,8 @@ instance Comonad ((,) a) where
 --
 -- >>> extend sum [105,202,307]
 -- [614,509,307]
-extend ::
-  Cojoin f =>
-  (f x -> y)
-  -> f x
-  -> f y
-extend =
-  error "todo: Z02#extend"
+extend :: Cojoin f => (f x -> y) -> f x -> f y
+extend f fx = f <$> (cojoin fx)
 
 -- | Implement composition. Note that this type signature is the same as the signature for
 -- (.) :: (  y -> z) -> (  x -> y) ->   x -> z
@@ -106,14 +108,8 @@ extend =
 --
 -- >>> comonadCompose (uncurry (+)) (uncurry (*)) (88, 99)
 -- 8800
-comonadCompose ::
-  Cojoin f =>
-  (f y -> z)
-  -> (f x -> y)
-  -> f x
-  -> z
-comonadCompose =
-  error "todo: Z02#comonadCompose"
+comonadCompose :: Cojoin f => (f y -> z) -> (f x -> y) -> f x -> z
+comonadCompose fyz fxy = (.) fyz (extend fxy)
 
 ---- All zippers are comonads!
 
@@ -123,53 +119,30 @@ comonadCompose =
 -- implementation that ensures that this function returns `Nothing`.
 --
 -- If the test fails, two unequal values (which should be equal) are returned in `Just`.
-law1 ::
-  (Cojoin f, Eq (f (f (f x)))) =>
-  f x
-  -> Maybe (f (f (f x)), f (f (f x)))
+law1 :: (Cojoin f, Eq (f (f (f x)))) => f x -> Maybe (f (f (f x)), f (f (f x)))
 law1 x =
-  let r = cojoin (cojoin x) 
+  let r = cojoin (cojoin x)
       s = fmap cojoin (cojoin x)
-  in  if r == s
-        then
-          Nothing
-        else
-          Just (r, s)
+  in  if r == s then Nothing else Just (r, s)
 
 -- | A test of `cojoin` and `copure` that should always return `Nothing`.
 -- If the test fails, two unequal values (which should be equal) are returned in `Just`.
-law2 ::
-  (Comonad f, Eq (f x)) =>
-  f x
-  -> Maybe (f x, f x)
+law2 :: (Comonad f, Eq (f x)) => f x -> Maybe (f x, f x)
 law2 x =
-  let x' = copure (cojoin x)
-  in  if x == x'
-        then
-          Nothing
-        else
-          Just (x, x')
+  let x' = copure (cojoin x) in if x == x' then Nothing else Just (x, x')
 
 -- | A test of `cojoin` and `copure` that should always return `Nothing`.
 -- If the test fails, two unequal values (which should be equal) are returned in `Just`.
-law3 ::
-  (Comonad f, Eq (f x)) =>
-  f x
-  -> Maybe (f x, f x)
+law3 :: (Comonad f, Eq (f x)) => f x -> Maybe (f x, f x)
 law3 x =
-  let x' = fmap copure (cojoin x)
-  in  if x == x'
-        then
-          Nothing
-        else
-          Just (x, x')
+  let x' = fmap copure (cojoin x) in if x == x' then Nothing else Just (x, x')
 
 -- | Implement `cojoin` for `FiveOfZipper`. Ensure that `law1` passes.
 --
 -- /Tip/ We already wrote this function in `module Z00`
+-- FiveOfZipper x -> FiveOfZipper (FiveOfZipper x)
 instance Cojoin FiveOfZipper where
-  cojoin =
-    error "todo: Z02#FiveOfZipper.cojoin"
+  cojoin = Z00.duplicate
 
 -- | Implement `cojoin` for `ListZipper`. Ensure that `law1` passes.
 --
@@ -187,8 +160,7 @@ instance Cojoin FiveOfZipper where
 -- >>> cojoin (ListZipper 5 (ListDerivative [4,3,2,1] []))
 -- ListZipper (ListZipper 5 (ListDerivative [4,3,2,1] [])) (ListDerivative [ListZipper 4 (ListDerivative [3,2,1] [5]),ListZipper 3 (ListDerivative [2,1] [4,5]),ListZipper 2 (ListDerivative [1] [3,4,5]),ListZipper 1 (ListDerivative [] [2,3,4,5])] [])
 instance Cojoin ListZipper where
-  cojoin =
-    error "todo: Z02#ListZipper.cojoin"
+  cojoin = Z01.duplicate
 
 -- | Implement `copure` for `FiveOfZipper`. Ensure that `law1`, `law2` and `law3` passes.
 --
@@ -203,8 +175,7 @@ instance Cojoin ListZipper where
 -- >>> copure (FiveOfZipper 10 (FiveOfDerivative Five 11 12 13 14))
 -- 14
 instance Comonad FiveOfZipper where
-  copure =
-    error "todo: Z02#FiveOfZipper.copure"
+  copure = Z00.getFocus
 
 -- | Implement `copure` for `ListZipper`. Ensure that `law1`, `law2` and `law3` passes.
 --
@@ -219,5 +190,4 @@ instance Comonad FiveOfZipper where
 -- >>> copure (ListZipper 1 (ListDerivative [] [2,3,4,5]))
 -- 1
 instance Comonad ListZipper where
-  copure =
-    error "todo: Z02#ListZipper.copure"
+  copure = Z01.getFocus

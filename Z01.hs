@@ -403,4 +403,4 @@ makeMoves =
 -- /Tip/ Write a recursive function that loops on moves and a zipper, while keeping track of visited focii
 example2
   :: (String -> String) -> [Move] -> [([Move], String)] -> [([Move], String)]
-example2 sm = error "todo: Z01#example2"
+example2 = error "todo: Z01#example2"
